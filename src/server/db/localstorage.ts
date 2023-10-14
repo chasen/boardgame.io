@@ -1,5 +1,24 @@
 import { InMemory } from './inmemory';
 
+const getCircularReplacer = () => {
+  const ancestors: Array<string> = [];
+  return function (key: any, value: any) {
+    if (typeof value !== 'object' || value === null) {
+      return value;
+    }
+    // `this` is the object that value is contained in,
+    // i.e., its direct parent.
+    while (ancestors.length > 0 && ancestors[ancestors.length - 1] !== this) {
+      ancestors.pop();
+    }
+    if (ancestors.includes(value)) {
+      return '[Circular]';
+    }
+    ancestors.push(value);
+    return value;
+  };
+};
+
 class WithLocalStorageMap<Key, Value> extends Map {
   key: string;
 
@@ -12,7 +31,10 @@ class WithLocalStorageMap<Key, Value> extends Map {
 
   sync(): void {
     const entries = [...this.entries()];
-    localStorage.setItem(this.key, JSON.stringify(entries));
+    localStorage.setItem(
+      this.key,
+      JSON.stringify(entries, getCircularReplacer())
+    );
   }
 
   set(key: Key, value: Value): this {
